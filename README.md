@@ -1,4 +1,3 @@
-# Export from notion to BookStack
 # Exporta de Notion e importa en BookStack
 
 Migra exportaciones Markdown de Notion a una instancia propia de [BookStack](https://www.bookstackapp.com/).
