@@ -1,115 +1,115 @@
 # notion-to-bookstack
 
-Migrate Notion Markdown exports to a self-hosted [BookStack](https://www.bookstackapp.com/) instance.
+Migra exportaciones Markdown de Notion a una instancia propia de [BookStack](https://www.bookstackapp.com/).
 
-## Features
+## Características
 
-- **Images** — resized with Pillow and embedded as inline base64 data URIs (no external image hosting needed)
-- **Animated GIFs** — preserved as raw bytes, never re-encoded
-- **Callout blocks** — Notion `<aside>` callouts converted to styled HTML divs
-- **Checkboxes** — `- [ ]` / `- [x]` converted to ☐ / ☑
-- **YouTube links** — bare URLs and Markdown links converted to responsive iframes
-- **File attachments** — PDF, DOCX, XLSX, PPTX, ZIP, and more uploaded automatically to BookStack
-- **Broken link repair** — post-migration helper replaces relative `href` paths with real BookStack attachment URLs
-- **Notion quirks handled** — truncated folder names, 32-char hex IDs in filenames, URL-encoded image paths
-- **Batch mode** — migrate multiple Notion exports in a single run
+- **Imágenes** — redimensionadas con Pillow e incrustadas como URIs base64 (no requiere servidor de imágenes externo)
+- **GIFs animados** — preservados como bytes crudos, sin recodificar
+- **Bloques callout** — los bloques `<aside>` de Notion se convierten en divs HTML con estilo
+- **Casillas de verificación** — `- [ ]` / `- [x]` convertidas a ☐ / ☑
+- **Vídeos de YouTube** — URLs sueltas y enlaces Markdown convertidos a iframes responsivos
+- **Adjuntos** — PDF, DOCX, XLSX, PPTX, ZIP y más subidos automáticamente a BookStack
+- **Reparación de enlaces rotos** — script auxiliar que reemplaza rutas relativas por las URLs reales de los adjuntos en BookStack
+- **Compatibilidad con Notion** — nombres de carpetas truncados, IDs hexadecimales de 32 caracteres en nombres de archivo, rutas de imagen codificadas en URL
+- **Modo batch** — migra múltiples exportaciones de Notion en una sola ejecución
 
-## Requirements
+## Requisitos
 
 - Python 3.10+
-- A running BookStack instance with API access enabled
-- A BookStack API token (Settings → API Tokens)
+- Una instancia de BookStack en funcionamiento con acceso a la API habilitado
+- Un token de API de BookStack (Configuración → Tokens de API)
 
-Install dependencies:
+Instalar dependencias:
 
 ```bash
 pip install -r requirements.txt
 ```
 
-## Configuration
+## Configuración
 
-Edit the constants at the top of `notion_to_bookstack.py`:
+Edita las constantes al principio de `notion_to_bookstack.py`:
 
 ```python
-BOOKSTACK_URL = "http://your-bookstack-host:port"
-TOKEN_ID      = "YOUR_TOKEN_ID"
-TOKEN_SECRET  = "YOUR_TOKEN_SECRET"
+BOOKSTACK_URL = "http://tu-servidor-bookstack:puerto"
+TOKEN_ID      = "TU_TOKEN_ID"
+TOKEN_SECRET  = "TU_TOKEN_SECRET"
 
-# Single book migration
-EXPORT_ROOT = r"/path/to/notion/export"
-BOOK_NAME   = "My Book"
+# Migración de un único libro
+EXPORT_ROOT = r"/ruta/a/la/exportacion/notion"
+BOOK_NAME   = "Mi Libro"
 
-# Batch migration (takes priority over single mode)
+# Modo batch: lista de (ruta_exportacion, nombre_libro) — tiene prioridad sobre el modo individual
 BATCH: list[tuple[str, str]] = [
-    (r"/path/to/export1", "Book 1"),
-    (r"/path/to/export2", "Book 2"),
+    (r"/ruta/exportacion1", "Libro 1"),
+    (r"/ruta/exportacion2", "Libro 2"),
 ]
 ```
 
-## Usage
+## Uso
 
-### 1. Extract the Notion ZIP (Windows)
+### 1. Extraer el ZIP de Notion (Windows)
 
-Notion exports on Windows can have encoding and path-length issues. Use the helper:
+Las exportaciones de Notion en Windows pueden tener problemas de codificación y longitud de ruta. Usa el script auxiliar:
 
 ```bash
-python extract_zip.py notion_export.zip C:\output --prefix "My Workspace/" --max-dir 40
+python extract_zip.py exportacion_notion.zip C:\destino --prefix "Mi Espacio/" --max-dir 40
 ```
 
-Options:
-- `--prefix` — path prefix to strip from ZIP entries (default: `Privado y compartido/`)
-- `--max-dir` — max characters per folder name component to avoid Windows MAX_PATH (default: `40`)
+Opciones:
+- `--prefix` — prefijo de ruta a eliminar de las entradas del ZIP (por defecto: `Privado y compartido/`)
+- `--max-dir` — máximo de caracteres por componente de nombre de carpeta, para evitar el límite MAX_PATH de Windows (por defecto: `40`)
 
-### 2. Run the migration
+### 2. Ejecutar la migración
 
 ```bash
 python notion_to_bookstack.py
 ```
 
-The script will:
-1. Connect to BookStack and verify credentials
-2. Create a Book (and Chapters) matching the Notion folder structure
-3. Convert each `.md` file to HTML and create a Page
-4. Upload file attachments found in asset folders next to each page
+El script:
+1. Se conecta a BookStack y verifica las credenciales
+2. Crea un Libro (y Capítulos) siguiendo la estructura de carpetas de Notion
+3. Convierte cada archivo `.md` a HTML y crea una Página
+4. Sube los adjuntos encontrados en las carpetas de recursos junto a cada página
 
-### 3. Fix broken attachment links (optional)
+### 3. Reparar enlaces de adjuntos rotos (opcional)
 
-If pages already exist with broken relative file links, run:
+Si ya existen páginas con enlaces relativos rotos, ejecuta:
 
 ```bash
 python fix_attachments.py
 ```
 
-This fetches all uploaded attachments from BookStack, scans every page for `href="..."` attributes pointing to local relative paths, and replaces them with the real `/attachments/{id}` URLs.
+Este script obtiene todos los adjuntos subidos a BookStack, busca en cada página atributos `href="..."` que apunten a rutas locales relativas y los reemplaza por las URLs reales `/attachments/{id}`.
 
-### 4. Enable YouTube iframes (optional)
+### 4. Habilitar iframes de YouTube (opcional)
 
-To render YouTube iframes, add this to your BookStack `.env` or `docker-compose.yml`:
+Para que los iframes de YouTube se rendericen, añade esto al `.env` o `docker-compose.yml` de BookStack:
 
 ```
 ALLOWED_IFRAME_HOSTS=https://www.youtube.com https://www.youtube-nocookie.com
 ```
 
-Then restart the container. The migration script converts YouTube links automatically; for already-migrated pages run the script again or use `fix_attachments.py`.
+Luego reinicia el contenedor. El script de migración convierte los enlaces de YouTube automáticamente; para páginas ya migradas, vuelve a ejecutar el script o usa `fix_attachments.py`.
 
-## BookStack structure mapping
+## Correspondencia de estructura
 
 | Notion | BookStack |
 |--------|-----------|
-| Export root | Book |
-| Top-level folder | Chapter |
-| `.md` file | Page |
-| Asset folder (images, PDFs…) | Inline images + Attachments |
+| Raíz de la exportación | Libro |
+| Carpeta de primer nivel | Capítulo |
+| Archivo `.md` | Página |
+| Carpeta de recursos (imágenes, PDFs…) | Imágenes incrustadas + Adjuntos |
 
-Folders nested more than one level deep are automatically flattened into Chapters.
+Las carpetas anidadas más de un nivel se aplanan automáticamente como Capítulos.
 
-## Notes
+## Notas
 
-- Images are embedded as base64 data URIs to avoid managing a separate media server.
-  For very large exports this increases page size; consider reducing `IMG_MAX_PX` or `IMG_QUALITY`.
-- BookStack limits iframes to hosts listed in `ALLOWED_IFRAME_HOSTS`. YouTube iframes will not render without it.
-- On Windows, use short base paths (e.g. `C:\n\`) to stay under the 260-character MAX_PATH limit.
+- Las imágenes se incrustan como URIs base64 para evitar gestionar un servidor de medios externo.
+  En exportaciones muy grandes esto aumenta el tamaño de las páginas; considera reducir `IMG_MAX_PX` o `IMG_QUALITY`.
+- BookStack solo permite iframes de los hosts indicados en `ALLOWED_IFRAME_HOSTS`. Sin esa configuración los iframes de YouTube no se mostrarán.
+- En Windows, usa rutas base cortas (p. ej. `C:\n\`) para no superar el límite de 260 caracteres de MAX_PATH.
 
-## License
+## Licencia
 
 MIT
